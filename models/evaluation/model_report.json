@@ -1,0 +1,352 @@
+{
+    "project": {
+        "name": "Wearable Personalized Anomaly Detection",
+        "task": "Unsupervised wearable time-series anomaly detection"
+    },
+    "model": {
+        "architecture": "LSTM Autoencoder",
+        "input_features": 41,
+        "sequence_length": 12,
+        "hidden_dimension": 64,
+        "latent_dimension": 32,
+        "num_layers": 2,
+        "dropout": 0.2,
+        "parameters": 134089
+    },
+    "threshold": {
+        "threshold": 5.3221282958984375,
+        "method": "validation_baseline_99th_percentile",
+        "num_validation_sequences": 613,
+        "mean_error": 0.628600001335144,
+        "std_error": 0.8708717226982117,
+        "min_error": 0.04022824391722679,
+        "median_error": 0.3978540301322937,
+        "max_error": 5.9861578941345215,
+        "best_epoch": 34,
+        "best_val_loss": 0.62859997396368
+    },
+    "training": {
+        "epochs_trained": 41,
+        "best_epoch": 34,
+        "best_train_loss": 0.3962108549141447,
+        "best_validation_loss": 0.62859997396368
+    },
+    "validation": {
+        "summary": {
+            "total_sequences": 2973,
+            "anomaly_count": 19,
+            "anomaly_rate": 0.006390850992263707,
+            "mean_reconstruction_error": 0.6555600452929701,
+            "median_reconstruction_error": 0.3922143,
+            "max_reconstruction_error": 21.88659,
+            "mean_anomaly_score": 0.12317629477961654,
+            "baseline_anomalies": 7,
+            "non_baseline_anomalies": 12
+        },
+        "top_stages": [
+            {
+                "protocol_stage": "AEROBIC_BLOCK_01",
+                "total_sequences": 84,
+                "anomaly_count": 12,
+                "anomaly_rate": 0.1428571428571428,
+                "mean_reconstruction_error": 3.0084999778214288,
+                "median_reconstruction_error": 0.288638135,
+                "max_reconstruction_error": 21.88659
+            },
+            {
+                "protocol_stage": "BASELINE",
+                "total_sequences": 334,
+                "anomaly_count": 7,
+                "anomaly_rate": 0.0209580838323353,
+                "mean_reconstruction_error": 0.5200676675718563,
+                "median_reconstruction_error": 0.263297095,
+                "max_reconstruction_error": 5.986158
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_08",
+                "total_sequences": 5,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 1.120787908,
+                "median_reconstruction_error": 1.1686649,
+                "max_reconstruction_error": 1.3858364
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_10",
+                "total_sequences": 60,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 1.1029568075,
+                "median_reconstruction_error": 1.00150088,
+                "max_reconstruction_error": 1.886862
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_07",
+                "total_sequences": 38,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 1.0824892089473683,
+                "median_reconstruction_error": 1.10790635,
+                "max_reconstruction_error": 1.277412
+            },
+            {
+                "protocol_stage": "AEROBIC_BLOCK_06",
+                "total_sequences": 71,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.9566325490985916,
+                "median_reconstruction_error": 0.5441653,
+                "max_reconstruction_error": 2.539959
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_05",
+                "total_sequences": 54,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.9104571588888888,
+                "median_reconstruction_error": 0.90163675,
+                "max_reconstruction_error": 1.3754982
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_09",
+                "total_sequences": 46,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.844651022826087,
+                "median_reconstruction_error": 0.7402599999999999,
+                "max_reconstruction_error": 1.2107065
+            },
+            {
+                "protocol_stage": "POST_PROTOCOL",
+                "total_sequences": 140,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.8256516054999999,
+                "median_reconstruction_error": 0.75922292,
+                "max_reconstruction_error": 4.4622493
+            },
+            {
+                "protocol_stage": "AEROBIC_BLOCK_04",
+                "total_sequences": 201,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.7954219975124378,
+                "median_reconstruction_error": 0.47975284,
+                "max_reconstruction_error": 3.8905988
+            }
+        ],
+        "top_participants": [
+            {
+                "participant_id": "S09",
+                "total_sequences": 434,
+                "anomaly_count": 12,
+                "anomaly_rate": 0.0276497695852534,
+                "mean_reconstruction_error": 0.9071448276820276,
+                "median_reconstruction_error": 0.20184695,
+                "max_reconstruction_error": 21.88659
+            },
+            {
+                "participant_id": "S17",
+                "total_sequences": 452,
+                "anomaly_count": 7,
+                "anomaly_rate": 0.0154867256637168,
+                "mean_reconstruction_error": 0.6163608688893806,
+                "median_reconstruction_error": 0.31806308,
+                "max_reconstruction_error": 5.986158
+            },
+            {
+                "participant_id": "f13",
+                "total_sequences": 900,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.8406838533111111,
+                "median_reconstruction_error": 0.644749325,
+                "max_reconstruction_error": 4.4622493
+            },
+            {
+                "participant_id": "S13",
+                "total_sequences": 455,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.4431234382,
+                "median_reconstruction_error": 0.36722794,
+                "max_reconstruction_error": 1.1534237
+            },
+            {
+                "participant_id": "f04",
+                "total_sequences": 732,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.4350374512882513,
+                "median_reconstruction_error": 0.3864492499999999,
+                "max_reconstruction_error": 3.9935083
+            }
+        ]
+    },
+    "test": {
+        "summary": {
+            "total_sequences": 2679,
+            "anomaly_count": 169,
+            "anomaly_rate": 0.06308324001493094,
+            "mean_reconstruction_error": 12.452223016095932,
+            "median_reconstruction_error": 0.41512927,
+            "max_reconstruction_error": 210.86626,
+            "mean_anomaly_score": 2.3397074085719676,
+            "baseline_anomalies": 17,
+            "non_baseline_anomalies": 152
+        },
+        "top_stages": [
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_08",
+                "total_sequences": 3,
+                "anomaly_count": 3,
+                "anomaly_rate": 1.0,
+                "mean_reconstruction_error": 202.86859,
+                "median_reconstruction_error": 202.1205,
+                "max_reconstruction_error": 205.75122
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_07",
+                "total_sequences": 20,
+                "anomaly_count": 20,
+                "anomaly_rate": 1.0,
+                "mean_reconstruction_error": 201.5314085,
+                "median_reconstruction_error": 202.01568,
+                "max_reconstruction_error": 210.7848
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_09",
+                "total_sequences": 19,
+                "anomaly_count": 19,
+                "anomaly_rate": 1.0,
+                "mean_reconstruction_error": 194.04175526315788,
+                "median_reconstruction_error": 194.51546,
+                "max_reconstruction_error": 198.0298
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_10",
+                "total_sequences": 15,
+                "anomaly_count": 15,
+                "anomaly_rate": 1.0,
+                "mean_reconstruction_error": 191.77337,
+                "median_reconstruction_error": 190.56715,
+                "max_reconstruction_error": 201.60225
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_01",
+                "total_sequences": 33,
+                "anomaly_count": 24,
+                "anomaly_rate": 0.7272727272727273,
+                "mean_reconstruction_error": 145.46659220363637,
+                "median_reconstruction_error": 196.34235,
+                "max_reconstruction_error": 204.62518
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_05",
+                "total_sequences": 29,
+                "anomaly_count": 20,
+                "anomaly_rate": 0.6896551724137931,
+                "mean_reconstruction_error": 138.85036206620688,
+                "median_reconstruction_error": 195.85034,
+                "max_reconstruction_error": 210.07964
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_03",
+                "total_sequences": 28,
+                "anomaly_count": 19,
+                "anomaly_rate": 0.6785714285714286,
+                "mean_reconstruction_error": 138.33026656500002,
+                "median_reconstruction_error": 195.67141,
+                "max_reconstruction_error": 210.86626
+            },
+            {
+                "protocol_stage": "POST_PROTOCOL",
+                "total_sequences": 116,
+                "anomaly_count": 20,
+                "anomaly_rate": 0.1724137931034483,
+                "mean_reconstruction_error": 31.32018638094828,
+                "median_reconstruction_error": 0.75324485,
+                "max_reconstruction_error": 198.1224
+            },
+            {
+                "protocol_stage": "PRE_PROTOCOL",
+                "total_sequences": 122,
+                "anomaly_count": 17,
+                "anomaly_rate": 0.1393442622950819,
+                "mean_reconstruction_error": 18.176977330319676,
+                "median_reconstruction_error": 0.45969477,
+                "max_reconstruction_error": 198.38971
+            },
+            {
+                "protocol_stage": "ANAEROBIC_BLOCK_02",
+                "total_sequences": 78,
+                "anomaly_count": 5,
+                "anomaly_rate": 0.0641025641025641,
+                "mean_reconstruction_error": 13.032170177307693,
+                "median_reconstruction_error": 0.6263348,
+                "max_reconstruction_error": 195.78746
+            }
+        ],
+        "top_participants": [
+            {
+                "participant_id": "f09",
+                "total_sequences": 733,
+                "anomaly_count": 169,
+                "anomaly_rate": 0.2305593451568895,
+                "mean_reconstruction_error": 44.01929318389222,
+                "median_reconstruction_error": 0.49734405,
+                "max_reconstruction_error": 210.86626
+            },
+            {
+                "participant_id": "S10",
+                "total_sequences": 454,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 1.135878184876652,
+                "median_reconstruction_error": 1.17187665,
+                "max_reconstruction_error": 4.194343
+            },
+            {
+                "participant_id": "S14",
+                "total_sequences": 468,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.5135784627350427,
+                "median_reconstruction_error": 0.36240107,
+                "max_reconstruction_error": 2.4373624
+            },
+            {
+                "participant_id": "f14",
+                "total_sequences": 268,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.445032490238806,
+                "median_reconstruction_error": 0.45481999,
+                "max_reconstruction_error": 1.5636501
+            },
+            {
+                "participant_id": "S18",
+                "total_sequences": 452,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.3467874315995575,
+                "median_reconstruction_error": 0.3315663749999999,
+                "max_reconstruction_error": 1.3087825
+            },
+            {
+                "participant_id": "f18",
+                "total_sequences": 304,
+                "anomaly_count": 0,
+                "anomaly_rate": 0.0,
+                "mean_reconstruction_error": 0.2016562939703947,
+                "median_reconstruction_error": 0.169454375,
+                "max_reconstruction_error": 0.5981659
+            }
+        ]
+    },
+    "interpretation": {
+        "validation_anomaly_rate": 0.006390850992263707,
+        "test_anomaly_rate": 0.06308324001493094,
+        "note": "The model performs unsupervised anomaly detection. An anomaly indicates deviation from learned baseline behavior and is not a medical diagnosis."
+    }
+}

@@ -1,0 +1,3 @@
+category,total_sequences,anomaly_count,anomaly_rate,mean_reconstruction_error,median_reconstruction_error,max_reconstruction_error
+Non-baseline,2202,152,0.06902815622161672,14.083551573816985,0.43692549999999997,210.86626
+Baseline,477,17,0.03563941299790356,4.921435837685534,0.34751588,198.38971

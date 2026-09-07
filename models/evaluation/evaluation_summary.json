@@ -1,0 +1,48 @@
+{
+    "validation": {
+        "split": "validation",
+        "total_sequences": 2973,
+        "anomaly_count": 19,
+        "normal_count": 2954,
+        "anomaly_rate": 0.006390850992263707,
+        "mean_reconstruction_error": 0.6555600452929701,
+        "median_reconstruction_error": 0.3922143,
+        "max_reconstruction_error": 21.88659,
+        "mean_anomaly_score": 0.12317629477961654,
+        "baseline": {
+            "total_sequences": 613,
+            "anomaly_count": 7,
+            "anomaly_rate": 0.011419249592169658,
+            "mean_reconstruction_error": 0.6285999687748778
+        },
+        "non_baseline": {
+            "total_sequences": 2360,
+            "anomaly_count": 12,
+            "anomaly_rate": 0.005084745762711864,
+            "mean_reconstruction_error": 0.6625628109309322
+        }
+    },
+    "test": {
+        "split": "test",
+        "total_sequences": 2679,
+        "anomaly_count": 169,
+        "normal_count": 2510,
+        "anomaly_rate": 0.06308324001493094,
+        "mean_reconstruction_error": 12.452223016095932,
+        "median_reconstruction_error": 0.41512927,
+        "max_reconstruction_error": 210.86626,
+        "mean_anomaly_score": 2.3397074085719676,
+        "baseline": {
+            "total_sequences": 477,
+            "anomaly_count": 17,
+            "anomaly_rate": 0.03563941299790356,
+            "mean_reconstruction_error": 4.921435837685534
+        },
+        "non_baseline": {
+            "total_sequences": 2202,
+            "anomaly_count": 152,
+            "anomaly_rate": 0.06902815622161672,
+            "mean_reconstruction_error": 14.083551573816987
+        }
+    }
+}
