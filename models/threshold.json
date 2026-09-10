@@ -1,0 +1,12 @@
+{
+    "threshold": 5.3221282958984375,
+    "method": "validation_baseline_99th_percentile",
+    "num_validation_sequences": 613,
+    "mean_error": 0.628600001335144,
+    "std_error": 0.8708717226982117,
+    "min_error": 0.04022824391722679,
+    "median_error": 0.3978540301322937,
+    "max_error": 5.9861578941345215,
+    "best_epoch": 34,
+    "best_val_loss": 0.62859997396368
+}

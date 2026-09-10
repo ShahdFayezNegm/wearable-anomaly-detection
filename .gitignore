@@ -34,3 +34,8 @@ models/*.pkl
 
 # Logs
 *.log
+# Generated model artifacts
+models/*.npy
+models/*.csv
+models/api_sample_request.json
+models/anomaly_plots/
