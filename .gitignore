@@ -38,4 +38,4 @@ models/*.pkl
 models/*.npy
 models/*.csv
 models/api_sample_request.json
-models/anomaly_plots/
+models/anomaly_plots/models/api_anomaly_test.json
