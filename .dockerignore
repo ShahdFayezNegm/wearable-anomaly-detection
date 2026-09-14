@@ -1,0 +1,17 @@
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.git
+.gitignore
+
+data/raw
+data/processed
+
+models/anomaly_plots
+models/evaluation
+
+models/*.npy
+models/*.csv
+
+models/api_sample_request.json
