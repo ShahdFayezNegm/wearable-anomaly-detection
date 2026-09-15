@@ -20,13 +20,22 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Restore PhysioNet dataset cache
+        id: dataset-cache
+        uses: actions/cache@v4
+        with:
+          path: data/raw/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1
+          key: ${{ runner.os }}-wearable-dataset-1.0.1
+
       - name: Download PhysioNet dataset
+        if: steps.dataset-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p data/raw
 
@@ -35,6 +44,7 @@ jobs:
             https://physionet.org/files/wearable-device-dataset/1.0.1/
 
       - name: Arrange dataset structure
+        if: steps.dataset-cache.outputs.cache-hit != 'true'
         run: |
           DATASET_DIR="data/raw/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1"
 
