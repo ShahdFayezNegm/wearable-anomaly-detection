@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download PhysioNet dataset
+        run: |
+          mkdir -p data/raw
+
+          wget -r -N -c -np -nH --cut-dirs=3 \
+            -P data/raw \
+            https://physionet.org/files/wearable-device-dataset/1.0.1/
+
+      - name: Arrange dataset structure
+        run: |
+          DATASET_DIR="data/raw/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1"
+
+          mkdir -p "$DATASET_DIR"
+
+          shopt -s dotglob nullglob
+
+          for item in data/raw/*; do
+            if [ "$(basename "$item")" != "wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1" ]; then
+              mv "$item" "$DATASET_DIR/"
+            fi
+          done
+
+      - name: Run tests
+        run: |
+          pytest
