@@ -32,31 +32,40 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1
-          key: ${{ runner.os }}-wearable-dataset-1.0.1
+          key: ${{ runner.os }}-wearable-dataset-1.0.1-v2
 
       - name: Download PhysioNet dataset
         if: steps.dataset-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p data/raw
+          mkdir -p data/raw/dataset-download
 
-          wget -r -N -c -np -nH --cut-dirs=3 \
-            -P data/raw \
-            https://physionet.org/files/wearable-device-dataset/1.0.1/
+          wget \
+            --tries=5 \
+            --waitretry=5 \
+            --timeout=60 \
+            --retry-on-http-error=408,429,500,502,503,504 \
+            -O data/raw/dataset.zip \
+            https://www.physionet.org/content/wearable-device-dataset/get-zip/1.0.1/
 
-      - name: Arrange dataset structure
+      - name: Extract PhysioNet dataset
         if: steps.dataset-cache.outputs.cache-hit != 'true'
         run: |
           DATASET_DIR="data/raw/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1"
 
           mkdir -p "$DATASET_DIR"
 
-          shopt -s dotglob nullglob
+          unzip -q data/raw/dataset.zip -d "$DATASET_DIR"
 
-          for item in data/raw/*; do
-            if [ "$(basename "$item")" != "wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1" ]; then
-              mv "$item" "$DATASET_DIR/"
-            fi
-          done
+          rm data/raw/dataset.zip
+
+      - name: Verify dataset structure
+        run: |
+          DATASET_DIR="data/raw/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1"
+
+          test -d "$DATASET_DIR/Wearable_Dataset/STRESS/f01"
+          test -d "$DATASET_DIR/Wearable_Dataset/STRESS/f14_a"
+          test -d "$DATASET_DIR/Wearable_Dataset/STRESS/S02"
 
       - name: Run tests
         run: |
