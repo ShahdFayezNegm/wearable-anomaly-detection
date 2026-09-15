@@ -32,13 +32,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1
-          key: ${{ runner.os }}-wearable-dataset-1.0.1-v2
+          key: ${{ runner.os }}-wearable-dataset-1.0.1-v3
 
       - name: Download PhysioNet dataset
         if: steps.dataset-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p data/raw
-          mkdir -p data/raw/dataset-download
 
           wget \
             --tries=5 \
@@ -53,11 +52,25 @@ jobs:
         run: |
           DATASET_DIR="data/raw/wearable-device-dataset-from-induced-stress-and-structured-exercise-sessions-1.0.1"
 
+          rm -rf "$DATASET_DIR"
           mkdir -p "$DATASET_DIR"
+          mkdir -p data/raw/extracted
 
-          unzip -q data/raw/dataset.zip -d "$DATASET_DIR"
+          unzip -q data/raw/dataset.zip -d data/raw/extracted
 
-          rm data/raw/dataset.zip
+          WEARABLE_DIR=$(find data/raw/extracted -type d -name "Wearable_Dataset" -print -quit)
+
+          if [ -z "$WEARABLE_DIR" ]; then
+            echo "Wearable_Dataset directory was not found."
+            echo "Extracted directories:"
+            find data/raw/extracted -maxdepth 5 -type d | head -100
+            exit 1
+          fi
+
+          mv "$WEARABLE_DIR" "$DATASET_DIR/Wearable_Dataset"
+
+          rm -rf data/raw/extracted
+          rm -f data/raw/dataset.zip
 
       - name: Verify dataset structure
         run: |
@@ -66,6 +79,8 @@ jobs:
           test -d "$DATASET_DIR/Wearable_Dataset/STRESS/f01"
           test -d "$DATASET_DIR/Wearable_Dataset/STRESS/f14_a"
           test -d "$DATASET_DIR/Wearable_Dataset/STRESS/S02"
+
+          echo "Dataset structure verified successfully."
 
       - name: Run tests
         run: |
