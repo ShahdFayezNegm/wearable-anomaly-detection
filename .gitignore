@@ -32,12 +32,17 @@ models/*.h5
 models/*.keras
 models/*.pkl
 
+# Required inference artifacts
+!models/lstm_autoencoder.pt
+!models/preprocessor.pkl
+!models/feature_scaler.pkl
+
 # Logs
 *.log
+
 # Generated model artifacts
 models/*.npy
 models/*.csv
 models/api_sample_request.json
-models/anomaly_plots/models/api_anomaly_test.json
 models/api_anomaly_test.json
 models/anomaly_plots/
