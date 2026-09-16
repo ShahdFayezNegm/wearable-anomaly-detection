@@ -3,12 +3,20 @@ from pathlib import Path
 from typing import Any
 
 import json
+import time
+
 import joblib
 import numpy as np
 import pandas as pd
 import torch
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from pydantic import BaseModel, Field
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Histogram,
+    generate_latest,
+)
 
 from src.models.lstm_autoencoder import LSTMAutoencoder
 
@@ -45,6 +53,39 @@ model = None
 preprocessor = None
 threshold = None
 feature_columns = []
+
+
+# ============================================================
+# Monitoring metrics
+# ============================================================
+
+HTTP_REQUESTS = Counter(
+    "http_requests_total",
+    "Total number of HTTP requests.",
+    ["method", "endpoint", "status"],
+)
+
+HTTP_ERRORS = Counter(
+    "http_errors_total",
+    "Total number of HTTP 4xx and 5xx responses.",
+    ["method", "endpoint", "status"],
+)
+
+HTTP_REQUEST_LATENCY = Histogram(
+    "http_request_latency_seconds",
+    "HTTP request latency in seconds.",
+    ["method", "endpoint"],
+)
+
+PREDICTIONS_TOTAL = Counter(
+    "predictions_total",
+    "Total number of prediction requests.",
+)
+
+ANOMALIES_TOTAL = Counter(
+    "anomalies_total",
+    "Total number of detected anomalies.",
+)
 
 
 # ============================================================
@@ -214,6 +255,78 @@ app = FastAPI(
 
 
 # ============================================================
+# Monitoring middleware
+# ============================================================
+
+@app.middleware("http")
+async def monitoring_middleware(
+    request: Request,
+    call_next,
+):
+
+    start_time = time.perf_counter()
+
+    try:
+
+        response = await call_next(request)
+
+        status_code = response.status_code
+
+        HTTP_REQUESTS.labels(
+            method=request.method,
+            endpoint=request.url.path,
+            status=str(status_code),
+        ).inc()
+
+        if status_code >= 400:
+
+            HTTP_ERRORS.labels(
+                method=request.method,
+                endpoint=request.url.path,
+                status=str(status_code),
+            ).inc()
+
+        return response
+
+    except Exception:
+
+        HTTP_ERRORS.labels(
+            method=request.method,
+            endpoint=request.url.path,
+            status="500",
+        ).inc()
+
+        raise
+
+    finally:
+
+        latency = (
+            time.perf_counter() - start_time
+        )
+
+        HTTP_REQUEST_LATENCY.labels(
+            method=request.method,
+            endpoint=request.url.path,
+        ).observe(latency)
+
+
+# ============================================================
+# Metrics endpoint
+# ============================================================
+
+@app.get(
+    "/metrics",
+    include_in_schema=False,
+)
+def metrics():
+
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
+
+
+# ============================================================
 # Health endpoint
 # ============================================================
 
@@ -361,6 +474,7 @@ def preprocess_sequence(
     )
 
     if scaler is None:
+
         raise ValueError(
             "No scaler found in preprocessor.pkl."
         )
@@ -496,6 +610,7 @@ def predict_endpoint(
 ):
 
     if model is None:
+
         raise HTTPException(
             status_code=503,
             detail="Model is not loaded.",
@@ -511,6 +626,16 @@ def predict_endpoint(
             sequence=processed,
             top_k=request.top_k,
         )
+
+        # ----------------------------------------------------
+        # Prediction monitoring
+        # ----------------------------------------------------
+
+        PREDICTIONS_TOTAL.inc()
+
+        if result["is_anomaly"]:
+
+            ANOMALIES_TOTAL.inc()
 
         result.update(
             {
