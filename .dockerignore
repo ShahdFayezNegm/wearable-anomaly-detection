@@ -1,17 +1,20 @@
-.venv
-__pycache__
+.venv/
+__pycache__/
 *.pyc
-.pytest_cache
-.git
+.pytest_cache/
+.git/
 .gitignore
+.vscode/
 
-data/raw
-data/processed
+data/raw/
+data/processed/
 
-models/anomaly_plots
-models/evaluation
+models/anomaly_plots/
+models/evaluation/
 
 models/*.npy
 models/*.csv
 
 models/api_sample_request.json
+models/api_anomaly_test.json
+models/feature_scaler.pkl
