@@ -1,0 +1,130 @@
+name: Drift Detection and Automatic Retraining
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 2 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  retraining:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest
+
+      - name: Run tests
+        run: |
+          python -m pytest -q
+
+      - name: Check required MLOps artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          required=(
+            "models/lstm_autoencoder.pt"
+            "models/preprocessor.pkl"
+            "models/threshold.json"
+            "models/train_sequences.npy"
+            "models/val_baseline_sequences.npy"
+            "models/test_baseline_sequences.npy"
+            "models/drift_report.json"
+          )
+
+          missing=0
+
+          for file in "${required[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "::warning::Missing artifact: $file"
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -eq 1 ]; then
+            echo "Artifacts unavailable in repository."
+            echo "Skipping drift detection and automatic retraining."
+
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "All required artifacts are available."
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run drift detection
+        if: steps.artifacts.outputs.available == 'true'
+        run: |
+          python -m src.monitoring.drift
+
+      - name: Check drift decision
+        id: drift
+        if: steps.artifacts.outputs.available == 'true'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          with open(
+              "models/drift_report.json",
+              "r",
+              encoding="utf-8",
+          ) as f:
+              report = json.load(f)
+
+          detected = bool(
+              report["drift_detected"]
+          )
+
+          print(
+              f"Drift detected: {detected}"
+          )
+
+          print(
+              "Overall drift rate: "
+              f"{report['overall_drift_rate']:.2%}"
+          )
+
+          with open(
+              os.environ["GITHUB_OUTPUT"],
+              "a",
+              encoding="utf-8",
+          ) as f:
+              f.write(
+                  f"detected={str(detected).lower()}\n"
+              )
+          PY
+
+      - name: Run automatic retraining
+        if: >
+          steps.artifacts.outputs.available == 'true' &&
+          steps.drift.outputs.detected == 'true'
+        run: |
+          python -m src.monitoring.retrain \
+            --current-data "data/processed/production_batch.csv" \
+            --epochs 50 \
+            --promote
+
+      - name: Upload retraining report
+        if: always() && steps.artifacts.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: retraining-report
+          path: |
+            models/drift_report.json
+            models/retraining_report.json
+          if-no-files-found: ignore

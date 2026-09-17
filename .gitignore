@@ -46,3 +46,13 @@ models/*.csv
 models/api_sample_request.json
 models/api_anomaly_test.json
 models/anomaly_plots/
+# Python build metadata
+*.egg-info/
+
+# Generated drift/retraining artifacts
+models/drift_report.json
+models/retraining_report.json
+models/retraining/
+
+# Simulated production data
+data/processed/production_batch.csv
