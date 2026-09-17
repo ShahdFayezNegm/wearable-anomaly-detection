@@ -782,7 +782,7 @@ wearable-anomaly-detection/
 │
 ├── tests/
 │   └── test_drift.py
-│
+│   └── test_validate.py
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
@@ -793,6 +793,7 @@ wearable-anomaly-detection/
 ├── Dockerfile
 ├── pyproject.toml
 ├── requirements.txt
+├── requirements-api.txt
 └── README.md
 ```
 
