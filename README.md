@@ -1,12 +1,10 @@
 # Wearable Anomaly Detection
 
-End-to-end **Machine Learning + MLOps** system for detecting unusual patterns in wearable sensor time-series data.
+An end-to-end **Machine Learning + MLOps system** for detecting anomalies in wearable sensor time-series data.
 
-The project uses an **LSTM Autoencoder** trained on baseline wearable data. Reconstruction error is used as the anomaly score, with a **"What Changed?"** explainability layer for detected anomalies.
+The project uses an **LSTM Autoencoder** trained on baseline wearable data. Anomaly detection is based on **reconstruction error**, with an explainability layer that identifies the wearable features contributing most to an anomalous observation.
 
-The system is served through **FastAPI**, containerized with **Docker**, published to **GitHub Container Registry (GHCR)**, deployed through **FastAPI Cloud**, monitored with **Prometheus**, and extended with **distribution drift detection** and **drift-triggered retraining with a model evaluation gate**.
-
-> **Important:** This is an anomaly detection research and engineering project. An anomaly represents a deviation from learned wearable behavior and is **not a medical diagnosis**.
+The system is exposed through a **FastAPI REST API**, containerized with **Docker**, published through **GitHub Container Registry (GHCR)**, deployed to **FastAPI Cloud**, monitored with **Prometheus-compatible metrics**, and extended with **data drift detection and guarded automatic retraining**.
 
 ---
 
@@ -14,26 +12,27 @@ The system is served through **FastAPI**, containerized with **Docker**, publish
 
 * **41 engineered wearable features**
 * **12-step temporal sequences**
-* LSTM Autoencoder for unsupervised anomaly detection
-* Participant-level train/validation/test split
+* Participant-level train/validation/test splitting
 * Leakage-safe preprocessing
-* Reconstruction-based anomaly scoring
-* **"What Changed?" feature-level explainability**
-* FastAPI inference service
+* LSTM Autoencoder anomaly detection
+* Reconstruction-error based anomaly scoring
+* Feature-level anomaly explanation
+* FastAPI REST API
+* Interactive Swagger/OpenAPI documentation
 * Dockerized deployment
+* GitHub Container Registry (GHCR)
 * GitHub Actions CI/CD
-* GHCR image publishing
-* Public HTTPS API
-* Prometheus monitoring
-* Wasserstein-based drift detection
+* Public HTTPS deployment on FastAPI Cloud
+* Prometheus-compatible monitoring metrics
+* Wasserstein-based data drift detection
 * Drift-triggered candidate retraining
-* Automated candidate evaluation gate
-* Model archiving before promotion
-* Automated rejection of inferior candidates
+* Evaluation gate before model promotion
+* Automatic model archiving before promotion
+* Safe rejection of inferior candidate models
 
 ---
 
-## Architecture
+# Architecture
 
 ```text
 Raw Wearable Data
@@ -54,7 +53,10 @@ Protocol Labeling
 Participant-Level Split
         │
         ▼
-Sequence Preparation
+Leakage-Safe Scaling
+        │
+        ▼
+12-Step Sequences
         │
         ▼
 LSTM Autoencoder
@@ -88,334 +90,391 @@ FastAPI Cloud
         ▼
 Public HTTPS API
 
-Monitoring Loop
-────────────────────────────────────
-Production / Current Batch
+
+Monitoring / Retraining Loop
         │
         ▼
-Drift Detection
+Data Drift Detection
         │
         ▼
 Drift Detected?
         │
-       Yes
         ▼
 Candidate Retraining
         │
         ▼
 Evaluation Gate
-        │
-   ┌────┴────┐
-   ▼         ▼
-Promote    Reject
+      /     \
+   Promote  Reject
+      │
+      ▼
+Archive Previous Model
 ```
 
 ---
 
-## Dataset
+# Dataset
 
-The project uses the **PhysioNet Wearable Device Dataset from Induced Stress and Structured Exercise Sessions v1.0.1**.
+The project uses the:
 
-The dataset contains structured sessions including:
+**PhysioNet Wearable Device Dataset from Induced Stress and Structured Exercise Sessions v1.0.1**
 
-* Stress
+The dataset contains wearable recordings collected during:
+
+* Stress sessions
 * Aerobic exercise
 * Anaerobic exercise
 
-### Signals
+Available physiological signals include:
 
-* Heart Rate (`HR`)
-* Blood Volume Pulse (`BVP`)
-* Electrodermal Activity (`EDA`)
-* Temperature (`TEMP`)
-* Accelerometer (`ACC_X`, `ACC_Y`, `ACC_Z`)
-* Accelerometer Magnitude (`ACC_MAG`)
-* Inter-Beat Interval (`IBI`)
+* Heart Rate (HR)
+* Blood Volume Pulse (BVP)
+* Electrodermal Activity (EDA)
+* Temperature (TEMP)
+* Accelerometer axes
+* Accelerometer magnitude (ACC_MAG)
+* Inter-Beat Interval (IBI)
 
-The sensor streams are aligned to a **1 Hz representation** before feature engineering.
+The signals were aligned to a **1 Hz representation** before feature engineering.
 
 ---
 
-## Data Pipeline
+# Data Pipeline
 
-### 1. Validation
+The preprocessing pipeline consists of:
 
-The validation stage checks:
+1. Raw wearable data loading
+2. Data validation
+3. Signal alignment
+4. Missing-value handling
+5. 10-second window feature extraction
+6. Protocol labeling
+7. Participant-level dataset splitting
+8. Train-only preprocessing fitting
+9. Sequence generation
+10. LSTM Autoencoder training
 
-* expected dataset structure
-* required files
-* sampling information
-* timestamp consistency
-* malformed IBI records
-* known dataset-specific constraints
-
-### 2. Preprocessing
-
-The pipeline:
-
-* reconstructs timestamps from session metadata
-* processes accelerometer axes
-* calculates `ACC_MAG`
-* aligns sensor streams to a 1-second timeline
-* handles irregular IBI observations
-* combines signals into a unified time series
-
-Primary processed output:
+The final dataset contains:
 
 ```text
-data/processed/wearable_timeseries_1hz.csv
+Participants: 41
+
+Train: 28 participants
+Validation: 6 participants
+Test: 7 participants
 ```
 
-### 3. Feature Engineering
-
-Features are computed over **10-second windows**.
-
-Final model representation:
+The resulting feature representation contains:
 
 ```text
 41 features
-12 timesteps
-```
-
-Sequence shape:
-
-```text
-(12, 41)
-```
-
-### 4. Protocol Labeling
-
-Each feature window is associated with protocol context such as baseline, stress, aerobic, and anaerobic stages.
-
-These labels are used for analysis and evaluation and are **not used as supervised anomaly labels**.
-
-### 5. Participant-Level Split
-
-The dataset is split by participant to reduce leakage between training and evaluation.
-
-```text
-41 participants
-
-Train       : 28
-Validation  : 6
-Test        : 7
-```
-
-Participant/session variants are normalized under a shared participant identifier when applicable.
-
----
-
-## Leakage-Safe Sequence Preparation
-
-The preprocessing pipeline is designed to avoid data leakage:
-
-* missing-value medians are learned from training data
-* the scaler is fitted using training baseline windows
-* validation and test data use the training preprocessing artifacts
-* sequences never cross participant/session boundaries
-
-Saved preprocessing artifact:
-
-```text
-models/preprocessor.pkl
+12 timesteps per sequence
 ```
 
 ---
 
-## Model
+# Leakage-Safe Data Preparation
 
-### LSTM Autoencoder
+The project uses participant-level splitting to reduce information leakage between train, validation, and test sets.
+
+Preprocessing artifacts are learned only from the training data:
+
+* Missing-value medians are learned from training data.
+* The scaler is fitted using training baseline data.
+* Validation and test data use the already-fitted training artifacts.
+* Sequences do not cross participant boundaries.
+* Sequences do not cross session boundaries.
+
+The preprocessing pipeline is stored as:
 
 ```text
-Input Sequence
-      │
-      ▼
-Encoder LSTM
-      │
-      ▼
+preprocessor.pkl
+```
+
+This allows the same preprocessing logic to be reused during inference and retraining.
+
+---
+
+# Model
+
+The anomaly detection model is an **LSTM Autoencoder** implemented with PyTorch.
+
+### Architecture
+
+```text
+Input
+41 features × 12 timesteps
+        │
+        ▼
+LSTM Encoder
+        │
+Hidden Size: 64
+        │
+        ▼
 Latent Representation
-      │
-      ▼
-Decoder LSTM
-      │
-      ▼
+Size: 32
+        │
+        ▼
+LSTM Decoder
+        │
+        ▼
 Reconstructed Sequence
+41 features × 12 timesteps
 ```
 
-Configuration:
+### Configuration
 
-| Parameter        |            Value |
-| ---------------- | ---------------: |
-| Architecture     | LSTM Autoencoder |
-| Input dimension  |               41 |
-| Hidden dimension |               64 |
-| Latent dimension |               32 |
-| LSTM layers      |                2 |
-| Dropout          |              0.2 |
+| Parameter       |   Value |
+| --------------- | ------: |
+| Input features  |      41 |
+| Sequence length |      12 |
+| Hidden size     |      64 |
+| Latent size     |      32 |
+| LSTM layers     |       2 |
+| Dropout         |     0.2 |
+| Framework       | PyTorch |
 
-The model learns baseline wearable behavior and detects unusual sequences through reconstruction error.
+Total model parameters:
+
+```text
+134,089
+```
 
 ---
 
-## Training
+# Training
 
-Training uses:
+The model is trained using:
 
 * **PyTorch**
-* Adam optimizer
-* Mean Squared Error reconstruction loss
-* validation monitoring
-* early stopping
-* best-checkpoint saving
+* **Adam optimizer**
+* **Mean Squared Error (MSE)**
+* Validation monitoring
+* Early stopping
+* Best-model checkpointing
 
-Reference training run:
+Training result:
 
 ```text
-Best epoch           : 34
-Best validation loss : 0.628600
+Best Epoch: 34
+Best Validation Loss: 0.628600
 ```
 
-Model artifact:
+The trained model is stored as:
 
 ```text
-models/lstm_autoencoder.pt
-```
-
----
-
-## Anomaly Detection
-
-For each input sequence, the model reconstructs the original sequence and calculates the mean squared reconstruction error.
-
-### Decision Rule
-
-```text
-reconstruction_error > threshold
-              │
-              ▼
-           anomaly
-```
-
-Current threshold:
-
-```text
-5.322128
-```
-
-The threshold is derived from the **99th percentile of validation baseline reconstruction errors**.
-
-Threshold artifact:
-
-```text
-models/threshold.json
+lstm_autoencoder.pt
 ```
 
 ---
 
-## Explainability
+# Anomaly Detection
 
-The project includes a **"What Changed?"** analysis to provide context for detected anomalies.
+The system uses **reconstruction error** as the anomaly score.
 
-### Reconstruction Contributors
+The autoencoder learns to reconstruct normal baseline wearable sequences.
 
-Feature-level reconstruction errors identify features contributing most strongly to the anomaly score.
+When a new sequence produces a significantly higher reconstruction error, it can be flagged as anomalous.
 
-Examples include:
-
-```text
-ACC_MAG_mean
-ACC_MAG_min
-ACC_MAG_max
-```
-
-### Baseline-Relative Changes
-
-Detected anomalies can also be compared against participant-specific baseline behavior across signals such as:
+The anomaly threshold was determined using the **99th percentile of validation baseline reconstruction errors**.
 
 ```text
-EDA
-ACC_MAG
-TEMP
-HR
-IBI
+Anomaly Threshold:
+5.3221282958984375
 ```
 
-This provides more context than a binary anomaly flag alone.
+Conceptually:
+
+```text
+Reconstruction Error
+        │
+        ├── below threshold ──► Normal
+        │
+        └── above threshold ──► Anomaly
+```
+
+The threshold is stored in:
+
+```text
+threshold.json
+```
 
 ---
 
-## Evaluation
+# Explainability — "What Changed?"
 
-This is an **unsupervised anomaly detection system**, so evaluation focuses on:
+The API does not only return whether a sequence is anomalous.
 
-* reconstruction error
-* anomaly rates
-* participant-level behavior
-* protocol-stage behavior
-* robustness analysis
-* anomaly investigation
-* explainability
+It also identifies features that contribute strongly to the reconstruction error.
 
-No clinical ground-truth anomaly labels are assumed.
+Example high-impact features include:
+
+* `EDA_range`
+* `EDA_std`
+* `HR_min`
+* `ACC_MAG_mean`
+* `ACC_MAG_min`
+* `ACC_MAG_max`
+
+The system can also compare incoming observations against participant-level baseline statistics for features such as:
+
+* EDA
+* ACC_MAG
+* TEMP
+* HR
+* IBI
+
+This provides a more interpretable answer to:
+
+> **What changed compared with the expected wearable pattern?**
 
 ---
 
-## FastAPI
+# Evaluation
 
-The trained model is exposed through a FastAPI inference service.
+This project uses **unsupervised anomaly detection**.
 
-### Run locally
+The dataset does not provide clinical ground-truth anomaly labels for evaluating the model as a supervised anomaly classifier.
+
+Therefore, evaluation focuses on:
+
+* Reconstruction performance
+* Validation baseline behavior
+* Threshold calibration
+* Drift detection
+* Candidate-vs-current model comparison
+* Safe model promotion
+
+This distinction is important because a high anomaly score indicates deviation from the learned baseline; it does **not** by itself represent a medical diagnosis.
+
+---
+
+# FastAPI
+
+The trained model is exposed through a REST API using **FastAPI**.
+
+Application:
+
+```text
+src.api.main:app
+```
+
+Application title:
+
+```text
+Wearable Anomaly Detection API
+```
+
+Version:
+
+```text
+1.0.0
+```
+
+Run locally:
 
 ```powershell
-.\.venv\Scripts\activate
-python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
+uvicorn src.api.main:app --reload
 ```
 
-### API Endpoints
-
-| Method | Endpoint      | Purpose                         |
-| ------ | ------------- | ------------------------------- |
-| GET    | `/health`     | Service health                  |
-| GET    | `/model-info` | Model and threshold information |
-| POST   | `/predict`    | Sequence anomaly prediction     |
-| GET    | `/metrics`    | Prometheus metrics              |
-
-Swagger / OpenAPI:
+The local API provides interactive Swagger/OpenAPI documentation at:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-### Prediction Input
-
-The model expects:
+OpenAPI specification:
 
 ```text
-12 consecutive windows × 41 features
+http://127.0.0.1:8000/openapi.json
 ```
 
-Prediction responses include fields such as:
+### Prediction Input
+
+The `/predict` endpoint expects a temporal sequence containing:
+
+```text
+12 timesteps
+×
+41 features
+```
+
+Conceptually:
+
+```json
+{
+  "sequence": [
+    [feature_1, feature_2, "...", feature_41"],
+    "...",
+    "12 timesteps total"
+  ]
+}
+```
+
+### Prediction Response
+
+The response includes information such as:
 
 ```text
 is_anomaly
 reconstruction_error
-anomaly_threshold
 anomaly_score
-top_reconstruction_features
-participant_id
-session_type
-protocol_stage
-sequence_shape
+top_features
+```
+
+Example response:
+
+```text
+is_anomaly: false
+reconstruction_error: 0.429891
+anomaly_score: 0.080774
+```
+
+Example top contributing features:
+
+```text
+EDA_range
+EDA_std
+HR_min
 ```
 
 ---
 
-## Monitoring
+# Live API Demo
+
+The deployed API is publicly accessible through FastAPI Cloud.
+
+### Swagger UI
+
+```text
+https://wearable-anomaly-detection.fastapicloud.dev/docs
+```
+
+### Base URL
+
+```text
+https://wearable-anomaly-detection.fastapicloud.dev
+```
+
+### Available Endpoints
+
+| Endpoint      | Method | Purpose                                  |
+| ------------- | ------ | ---------------------------------------- |
+| `/health`     | GET    | API and model health status              |
+| `/model-info` | GET    | Model configuration and metadata         |
+| `/predict`    | POST   | Run anomaly detection                    |
+| `/metrics`    | GET    | Prometheus-compatible monitoring metrics |
+
+The deployed `/health` and `/model-info` endpoints were validated successfully.
+
+---
+
+# Monitoring
 
 The API exposes Prometheus-compatible metrics through:
 
 ```text
-GET /metrics
+/metrics
 ```
 
 Tracked metrics include:
@@ -428,144 +487,139 @@ predictions_total
 anomalies_total
 ```
 
-Monitoring was validated locally, inside Docker, and on the deployed service.
+These metrics make it possible to monitor:
+
+* API traffic
+* Request errors
+* Latency
+* Number of predictions
+* Number of detected anomalies
+
+Monitoring was validated locally, inside the Docker deployment, and on the deployed service.
 
 ---
 
-## Drift Detection
+# Data Drift Detection
 
-The project implements feature-distribution drift detection using **normalized Wasserstein distance**.
+The project includes feature-level drift detection using the **Wasserstein distance**.
 
-### Detection Logic
-
-For each numerical model feature:
-
-1. compare the reference distribution with the current distribution
-2. calculate normalized Wasserstein distance
-3. apply the feature-level threshold
-4. calculate the overall drift rate
-5. trigger dataset-level drift when enough features exceed the threshold
+The detector compares a reference distribution against a current incoming batch.
 
 Configuration:
 
 ```text
-Feature drift threshold      : 0.20
-Overall drift-rate threshold : 20%
-Minimum valid values         : 20
+Feature drift threshold: 0.20
+Overall drift-rate threshold: 20%
+Minimum valid values: 20
 ```
 
-### Simulated Production Test
+A feature is considered drifted when its normalized Wasserstein distance exceeds the configured threshold.
 
-A deliberately shifted synthetic production batch produced:
+### Synthetic Stress Test
+
+A synthetic shifted batch was used to validate the drift detection system.
+
+Result:
 
 ```text
-Reference rows     : 15,015
-Current rows       : 211
-Features checked   : 41
-Drifted features   : 37
-Overall drift rate : 90.24%
-Drift detected     : True
+Reference samples: 15,015
+Current samples: 211
+Features checked: 41
+Drifted features: 37
+Drift rate: 90.24%
+Drift detected: True
 ```
 
-This value is a **synthetic stress-test result**, not a claim about real production drift.
+This was intentionally a **synthetic stress test** to validate the monitoring mechanism.
 
-### Run Drift Detection
-
-```powershell
-python -m src.monitoring.drift
-```
-
-Or with a specific current batch:
-
-```powershell
-python -m src.monitoring.drift `
-  --current "data\processed\production_batch.csv"
-```
+It should not be interpreted as evidence of real-world production drift.
 
 ---
 
-## Automatic Retraining
+# Automatic Retraining
 
-The project includes **drift-triggered candidate retraining**.
+The project includes a guarded retraining workflow.
 
-### Retraining Flow
+The intended flow is:
 
 ```text
-Drift Detected
+Incoming Data
       │
       ▼
-Load Current Feature Batch
+Drift Detection
       │
-      ▼
-Apply Existing Preprocessing
+      ├── No Drift ──► Continue Using Current Model
       │
-      ▼
-Build Current Baseline Sequences
-      │
-      ▼
-Combine Original + Current Data
-      │
-      ▼
-Train Candidate Model
-      │
-      ▼
-Evaluate on Untouched Test Baseline
-      │
-      ▼
-Evaluation Gate
-      │
-   ┌──┴──┐
-   ▼     ▼
-Promote Reject
+      └── Drift
+           │
+           ▼
+     Candidate Retraining
+           │
+           ▼
+     Candidate Evaluation
+           │
+           ▼
+       Evaluation Gate
+          /       \
+      Promote    Reject
 ```
 
-A drift event alone is **not enough** to replace the active model.
+When drift is detected:
 
-The candidate must achieve at least:
+1. The current data batch is processed.
+2. Existing preprocessing artifacts are reused.
+3. Current baseline sequences are generated.
+4. Original training data and current data are combined.
+5. A candidate model is trained.
+6. The candidate is evaluated on an untouched test baseline.
+7. The candidate is compared with the currently deployed model.
+8. The evaluation gate determines whether promotion is allowed.
+
+---
+
+# Retraining Safety Validation
+
+The retraining pipeline was tested using a synthetic drifted batch.
+
+Test configuration:
 
 ```text
-1% improvement on the holdout metric
-```
-
-Otherwise:
-
-```text
-Candidate rejected
-Current model remains active
-```
-
-### Safety Validation
-
-Using a simulated production batch:
-
-```text
-Drift rate              : 90.24%
-Current sequences       : 167
-Original training      : 3,219
-Combined training      : 3,386
+Detected drift: 90.24%
+Current sequences: 167
+Original training sequences: 3,219
+Combined training sequences: 3,386
 ```
 
 Candidate evaluation:
 
 ```text
-Current holdout loss    : 4.921436
-Candidate holdout loss  : 4.987376
-Improvement rate        : -1.34%
-Evaluation gate         : False
-Promotion               : Rejected
+Current model holdout loss: 4.921436
+Candidate model holdout loss: 4.987376
+Improvement: -1.34%
 ```
 
-This confirms that the retraining pipeline can **detect an inferior candidate and keep the current model active**.
-
-### Model Archiving
-
-Before a successful promotion, the active model artifacts are archived under:
+The promotion requirement is:
 
 ```text
-models/retraining/archive/
+Minimum improvement: 1%
 ```
 
-Archived artifacts may include:
+Because the candidate did not improve the required amount:
+
+```text
+Gate result: False
+Promotion: Rejected
+```
+
+This demonstrates that the retraining pipeline can detect a candidate model that does not meet the promotion requirement and prevent automatic replacement of the current model.
+
+---
+
+# Model Archiving
+
+Before a successful model promotion, the existing model artifacts can be archived.
+
+Archived artifacts include:
 
 ```text
 lstm_autoencoder.pt
@@ -573,346 +627,352 @@ threshold.json
 training_history.csv
 ```
 
----
-
-## Testing
-
-Dedicated drift tests cover both:
+Archive location:
 
 ```text
-Reference = Current
-        ↓
-No drift detected
-
-Synthetic distribution shift
-        ↓
-Drift detected
+models/retraining/archive/
 ```
 
-Current full test suite:
+This provides a recovery path and preserves previous model versions.
+
+---
+
+# Testing
+
+The project includes automated tests covering the main monitoring and retraining functionality.
+
+Validated scenarios include:
+
+* No drift when reference and current distributions are identical.
+* Drift detection under a synthetic distribution shift.
+* Retraining workflow behavior.
+* Evaluation gate behavior.
+* Artifact validation.
+
+Current test result:
 
 ```text
 5 passed
 ```
 
-Run:
-
-```powershell
-python -m pytest -q
-```
-
 ---
 
-## CI/CD
+# CI/CD
 
-GitHub Actions provides automated testing and container delivery.
+The project uses **GitHub Actions** to automate the application delivery pipeline.
 
-### CI Flow
+The CI/CD flow includes:
 
 ```text
-git push
+Git Push
    │
    ▼
-Automated Tests
+GitHub Actions
    │
-   ▼
-Docker Build
+   ├── Run Tests
    │
-   ▼
-GHCR Publish
+   ├── Build Docker Image
+   │
+   └── Publish Image
+           │
+           ▼
+          GHCR
 ```
 
 The project is integrated with:
 
 * GitHub
-* GitHub Container Registry
+* GitHub Actions
+* GitHub Container Registry (GHCR)
 * FastAPI Cloud
+
+This provides an automated path from source-code changes to container image publication.
 
 ---
 
-## Retraining Workflow
+# Retraining Workflow
 
-A separate workflow is defined in:
+The repository contains:
 
 ```text
 .github/workflows/retraining.yml
 ```
 
-It supports:
+The workflow supports:
 
-* manual execution
-* scheduled execution
-* test execution
-* artifact availability checks
-* drift detection
-* conditional retraining
-* candidate evaluation
-* safe model promotion
+* Manual execution
+* Scheduled execution
+* Automated testing
+* Artifact checks
+* Drift detection
+* Conditional retraining
+* Candidate evaluation
+* Safe model promotion
 
-The workflow intentionally avoids retraining when the required model/data artifacts are unavailable in the repository.
+The workflow is designed to avoid retraining when required data or model artifacts are unavailable.
 
-This keeps wearable-derived datasets and large model artifacts outside the public source repository.
+Large datasets and model artifacts are intentionally excluded from the Git repository.
 
-> Fully unattended production retraining from live wearable data would require a dedicated artifact/data storage layer.
+For a completely unattended production retraining system, an external data and artifact storage layer would be required.
 
 ---
 
-## Docker
+# Docker
 
-The FastAPI service is containerized with Docker.
+The API is containerized using Docker.
 
-### Build
+The Docker image is based on:
+
+```text
+python:3.12-slim
+```
+
+The container exposes:
+
+```text
+8000
+```
+
+Build:
 
 ```powershell
 docker build -t wearable-anomaly-api .
 ```
 
-### Run
+Run:
 
 ```powershell
 docker run --rm -p 8000:8000 wearable-anomaly-api
 ```
 
-The API uses:
-
-```text
-models/lstm_autoencoder.pt
-models/preprocessor.pkl
-models/threshold.json
-```
-
 Health check:
 
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/health
+```text
+http://127.0.0.1:8000/health
 ```
+
+The Dockerized API was tested locally before deployment.
 
 ---
 
-## Deployment
+# Deployment
 
-Deployment architecture:
+The deployment architecture is:
 
 ```text
-Local Project
-     │
-     ▼
-GitHub
-     │
-     ▼
+Developer
+    │
+    ▼
+GitHub Repository
+    │
+    ▼
 GitHub Actions
-     │
-     ▼
-Docker Image
-     │
-     ▼
-GHCR
-     │
-     ▼
-FastAPI Cloud
-     │
-     ▼
-Public HTTPS API
+    │
+    ├── Tests
+    ├── Docker Build
+    └── GHCR Publish
+             │
+             ▼
+            GHCR
+             │
+             ▼
+       FastAPI Cloud
+             │
+             ▼
+      Public HTTPS API
 ```
 
-### Live API
+The application is deployed using **FastAPI Cloud**.
 
-**Swagger / OpenAPI**
-
-[Open API Documentation](https://wearable-anomaly-detection.fastapicloud.dev/docs)
-
-**Base URL**
-
-```text
-https://wearable-anomaly-detection.fastapicloud.dev
-```
-
-The deployed service has been validated with live health, model-information, prediction, and monitoring requests.
+The live service and interactive Swagger documentation are available in the **Live API Demo** section above.
 
 ---
 
-## Project Structure
+# Project Structure
 
 ```text
 wearable-anomaly-detection/
 │
-├── data/
-│   ├── raw/
-│   └── processed/
-│
-├── models/
-│   ├── lstm_autoencoder.pt
-│   ├── preprocessor.pkl
-│   ├── threshold.json
-│   └── generated evaluation / visualization artifacts
-│
 ├── src/
 │   ├── api/
-│   │   ├── main.py
-│   │   └── make_sample_payload.py
+│   │   └── main.py
 │   │
 │   ├── data/
-│   │   ├── validate.py
-│   │   ├── preprocess.py
-│   │   ├── label_protocol.py
-│   │   └── split.py
-│   │
-│   ├── evaluation/
-│   │   ├── evaluate.py
-│   │   ├── robustness.py
-│   │   └── build_report.py
-│   │
 │   ├── features/
-│   │   └── build_features.py
-│   │
 │   ├── models/
-│   │   ├── prepare_sequences.py
-│   │   ├── lstm_autoencoder.py
-│   │   ├── train.py
-│   │   ├── detect_anomalies.py
-│   │   ├── analyze_anomalies.py
-│   │   ├── investigate_anomalies.py
-│   │   ├── explain_anomalies.py
-│   │   └── visualize_anomalies.py
-│   │
-│   └── monitoring/
-│       ├── drift.py
-│       ├── generate_production_batch.py
-│       └── retrain.py
+│   ├── monitoring/
+│   └── retraining/
 │
 ├── tests/
-│   └── test_drift.py
-│   └── test_validate.py
+│
+├── models/
+│   └── retraining/
+│       └── archive/
+│
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml
 │       └── retraining.yml
 │
-├── .dockerignore
-├── .gitignore
 ├── Dockerfile
-├── pyproject.toml
 ├── requirements.txt
-├── requirements-api.txt
+├── preprocessor.pkl
+├── threshold.json
+├── lstm_autoencoder.pt
 └── README.md
 ```
 
+Large datasets and generated artifacts are excluded from version control where appropriate.
+
 ---
 
-## Main Commands
+# Main Commands
 
-### Data
+### Create virtual environment
 
 ```powershell
-python -m src.data.validate
-python -m src.data.preprocess
-python -m src.data.label_protocol
-python -m src.data.split
+python -m venv .venv
 ```
 
-### Features & Sequences
+### Activate environment
 
 ```powershell
-python -m src.features.build_features
-python -m src.models.prepare_sequences
+.\.venv\Scripts\Activate.ps1
 ```
 
-### Model
+### Install dependencies
 
 ```powershell
-python -m src.models.train
-python -m src.models.detect_anomalies
-python -m src.models.analyze_anomalies
-python -m src.models.investigate_anomalies
-python -m src.models.explain_anomalies
-python -m src.models.visualize_anomalies
+pip install -r requirements.txt
 ```
 
-### Evaluation
+### Run FastAPI locally
 
 ```powershell
-python -m src.evaluation.evaluate
-python -m src.evaluation.robustness
-python -m src.evaluation.build_report
+uvicorn src.api.main:app --reload
 ```
 
-### Monitoring
+### Build Docker image
 
 ```powershell
-python -m src.monitoring.drift
-python -m src.monitoring.retrain
+docker build -t wearable-anomaly-api .
 ```
 
-### Tests
+### Run Docker container
 
 ```powershell
-python -m pytest -q
+docker run --rm -p 8000:8000 wearable-anomaly-api
 ```
 
 ---
 
-## Git Hygiene
+# Git Hygiene
 
-Raw datasets and generated artifacts are intentionally excluded from normal source control.
+The repository does not store large raw datasets or unnecessary generated artifacts.
 
-The project uses `.gitignore` and `.dockerignore` rules to keep temporary files, generated artifacts, local environments, and dataset-specific files outside the source repository.
+Examples of files that should remain outside Git when appropriate:
 
-Model delivery can be moved to dedicated artifact/model storage in a future production architecture.
+```text
+Raw datasets
+Large model checkpoints
+Temporary outputs
+Local virtual environments
+Generated caches
+```
+
+Sensitive credentials and deployment secrets should never be committed to the repository.
 
 ---
 
-## Current Status
+# Current Status
 
 | Component                  | Status |
-| -------------------------- | :----: |
-| Data validation            |    ✅   |
-| Preprocessing              |    ✅   |
-| Feature engineering        |    ✅   |
-| Protocol labeling          |    ✅   |
-| Participant-level split    |    ✅   |
-| Sequence preparation       |    ✅   |
-| LSTM Autoencoder           |    ✅   |
-| Training                   |    ✅   |
-| Anomaly detection          |    ✅   |
-| Explainability             |    ✅   |
-| Evaluation                 |    ✅   |
-| FastAPI                    |    ✅   |
-| Docker                     |    ✅   |
-| GHCR                       |    ✅   |
-| Cloud deployment           |    ✅   |
-| Public HTTPS API           |    ✅   |
-| Prometheus monitoring      |    ✅   |
-| CI/CD                      |    ✅   |
-| Drift detection            |    ✅   |
-| Drift testing              |    ✅   |
-| Automatic retraining       |    ✅   |
-| Retraining evaluation gate |    ✅   |
-| Model archiving            |    ✅   |
-| GitHub retraining workflow |    ✅   |
-
-### Production Automation Note
-
-The drift detection and retraining pipeline has been **implemented and locally validated using simulated production batches**.
-
-The GitHub Actions retraining workflow includes artifact-availability safeguards. Fully unattended retraining from live wearable data would additionally require a dedicated external data/artifact source.
+| -------------------------- | ------ |
+| Data preprocessing         | ✅      |
+| Feature engineering        | ✅      |
+| Participant-level split    | ✅      |
+| Leakage-safe preprocessing | ✅      |
+| LSTM Autoencoder           | ✅      |
+| Anomaly thresholding       | ✅      |
+| Explainability             | ✅      |
+| FastAPI API                | ✅      |
+| Swagger/OpenAPI            | ✅      |
+| Docker                     | ✅      |
+| GHCR integration           | ✅      |
+| FastAPI Cloud deployment   | ✅      |
+| Prometheus metrics         | ✅      |
+| Drift detection            | ✅      |
+| Retraining pipeline        | ✅      |
+| Evaluation gate            | ✅      |
+| Model archiving            | ✅      |
+| Automated tests            | ✅      |
+| GitHub Actions CI/CD       | ✅      |
 
 ---
 
-## Limitations
+# Limitations
 
-* This is an unsupervised anomaly detection system.
-* An anomaly represents a deviation from learned wearable behavior.
-* The system is not a medical diagnostic tool.
-* No clinical ground-truth anomaly labels are used.
-* Results may vary across datasets, wearable devices, populations, and protocols.
-* Synthetic production batches are used to validate drift and retraining behavior.
-* Fully unattended retraining from live wearable data requires dedicated artifact/data infrastructure.
+### 1. No clinical anomaly ground truth
+
+The project is an unsupervised anomaly detection system.
+
+The anomaly score represents deviation from the learned baseline and should not be interpreted as a clinical diagnosis.
+
+### 2. Retraining validation uses synthetic drift
+
+The drift and retraining mechanisms have been locally validated using simulated distribution shifts.
+
+This demonstrates that the system behaves correctly under controlled drift scenarios, but it does not establish performance under real production drift.
+
+### 3. Fully unattended live retraining requires external storage
+
+The repository intentionally does not contain large production datasets or model artifacts.
+
+A fully automated production retraining system would require an external artifact/data storage layer for:
+
+* Incoming production batches
+* Historical training data
+* Model artifacts
+* Versioned preprocessing artifacts
+* Retraining outputs
+
+### 4. Deployment environment
+
+The current deployed model runs on CPU.
+
+The system is designed as a portfolio/research implementation demonstrating the complete ML deployment and monitoring workflow rather than a clinically validated medical device.
 
 ---
 
-## Author
+# Future Improvements
+
+Potential next steps include:
+
+* Real production wearable data ingestion
+* External artifact storage
+* Model version registry
+* Grafana dashboards
+* Alerting for sustained drift
+* More advanced temporal architectures
+* Online/streaming anomaly detection
+* Additional explainability methods
+* More robust drift baselines
+* Automated rollback
+* Production authentication and rate limiting
+* Cloud-based experiment tracking
+* Real-world anomaly ground-truth collection
+
+---
+
+# Author
 
 **Shahd Fayez**
-AI / Machine Learning Engineer
 
-[GitHub](https://github.com/ShahdFayezNegm) · [LinkedIn](https://linkedin.com/in/shahd-fayez-70b9a331b)
+AI Engineer | Machine Learning | Computer Vision | RAG/LLM | ML Deployment
+
+GitHub:
+
+https://github.com/ShahdFayezNegm
+
+LinkedIn:
+
+https://linkedin.com/in/shahd-fayez-70b9a331b
